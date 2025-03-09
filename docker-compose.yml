@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: wood-cut-calc
+    ports:
+      - "5000:5000"
+    volumes:
+      - wood-data:/app/data
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    restart: unless-stopped
+
+volumes:
+  wood-data:
+    driver: local
