@@ -1,0 +1,40 @@
+DROP TABLE IF EXISTS suppliers;
+DROP TABLE IF EXISTS inventory;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS cuts;
+
+CREATE TABLE suppliers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL,
+    task TEXT NOT NULL,
+    length INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    width INTEGER NOT NULL,
+    price REAL NOT NULL,
+    link TEXT,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers (id)
+);
+
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE cuts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    length INTEGER NOT NULL,
+    width INTEGER NOT NULL,
+    depth INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (project_id) REFERENCES projects (id)
+);
