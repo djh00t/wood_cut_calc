@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - Home{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Wood Project Planner</h1>
+        <p class="col-md-8 fs-4">Plan and optimize your woodworking projects by managing your timber inventory and calculating the most efficient cutting plans.</p>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Suppliers & Inventory</h5>
+                        <p class="card-text">Manage your timber suppliers and track available inventory.</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <a href="{{ url_for('suppliers') }}" class="btn btn-primary btn-lg">View Suppliers</a>
+                            <a href="{{ url_for('add_supplier') }}" class="btn btn-outline-secondary btn-lg">Add Supplier</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Projects & Cuts</h5>
+                        <p class="card-text">Create projects and define the timber cuts needed.</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                            <a href="{{ url_for('projects') }}" class="btn btn-primary btn-lg">View Projects</a>
+                            <a href="{{ url_for('add_project') }}" class="btn btn-outline-secondary btn-lg">Add Project</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row align-items-md-stretch">
+    <div class="col-md-12 mb-4">
+        <div class="h-100 p-5 bg-light border rounded-3">
+            <h2>Import CSV Data</h2>
+            <p>Upload a CSV file with your timber inventory and project cuts to quickly get started.</p>
+            <div class="mb-3">
+                <label for="csvFileInput" class="form-label">Select CSV File</label>
+                <input class="form-control" type="file" id="csvFileInput" accept=".csv">
+            </div>
+            <button class="btn btn-outline-primary" id="importCsvBtn">Import Data</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('importCsvBtn').addEventListener('click', function() {
+        const fileInput = document.getElementById('csvFileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a CSV file to import.');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const csvData = e.target.result;
+            processCsvData(csvData);
+        };
+        reader.readAsText(file);
+    });
+    
+    function processCsvData(csvData) {
+        const lines = csvData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        
+        // Parse inventory data (first section)
+        const inventory = [];
+        let i = 2; // Skip header line
+        
+        while (i < lines.length && lines[i].indexOf(',,,,,') === -1) {
+            const parts = lines[i].split(',');
+            if (parts.length >= 5 && parts[0] !== '') {
+                inventory.push({
+                    task: parts[0],
+                    length: parseInt(parts[1]),
+                    height: parseInt(parts[2]),
+                    width: parseInt(parts[3]),
+                    price: parseFloat(parts[4].replace('$', '').trim()),
+                    link: parts.length > 5 ? parts[5] : ''
+                });
+            }
+            i++;
+        }
+        
+        // Skip empty line and header row
+        i += 2;
+        
+        // Parse cuts data (second section)
+        const cuts = [];
+        while (i < lines.length) {
+            const parts = lines[i].split(',');
+            if (parts.length >= 5 && parts[0] !== '') {
+                const length = parseInt(parts[1]) || 0;
+                const width = parseInt(parts[2]) || 0;
+                const depth = parseInt(parts[3]) || 0;
+                const quantity = parseInt(parts[4]) || 1;
+                
+                cuts.push({
+                    label: parts[0],
+                    length: length,
+                    width: width,
+                    depth: depth,
+                    quantity: quantity
+                });
+            }
+            i++;
+        }
+        
+        // Prepare data for API
+        const data = {
+            supplier_name: 'Imported Supplier',
+            project_name: 'Imported Project',
+            inventory: inventory,
+            cuts: cuts
+        };
+        
+        // Send to API
+        fetch('/api/import_csv', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Data imported successfully!');
+                window.location.href = `/project/${data.project_id}`;
+            } else {
+                alert('Failed to import data.');
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('Error importing data: ' + error);
+        });
+    }
+</script>
+{% endblock %}
