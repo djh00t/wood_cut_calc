@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - Add Supplier{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Add Supplier</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Supplier Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Add Supplier</button>
+            <a href="{{ url_for('suppliers') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
