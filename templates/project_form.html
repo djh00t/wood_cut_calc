@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - Add Project{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Add Project</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Project Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description (Optional)</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Add Project</button>
+            <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
