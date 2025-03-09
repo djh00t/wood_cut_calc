@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - Cutting Plan for {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Cutting Plan for {{ project.name }}</h2>
+    <div>
+        <button class="btn btn-primary" onclick="window.print()">Print Plan</button>
+        <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn btn-secondary">Back to Project</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Shopping List</h3>
+            </div>
+            <div class="card-body">
+                {% if shopping_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Dimensions (LxHxW mm)</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Price</th>
+                                    <th>Link</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_cost = 0 %}
+                                {% for key, item_data in shopping_list.items() %}
+                                    {% set item = item_data.item %}
+                                    {% set quantity = item_data.quantity %}
+                                    {% set item_total = item_data.total_price %}
+                                    {% set total_cost = total_cost + item_total %}
+                                    
+                                    <tr>
+                                        <td>{{ item.task }}</td>
+                                        <td>{{ item.length }} x {{ item.height }} x {{ item.width }}</td>
+                                        <td>{{ quantity }}</td>
+                                        <td>${{ "%.2f"|format(item.price) }}</td>
+                                        <td>${{ "%.2f"|format(item_total) }}</td>
+                                        <td>
+                                            {% if item.link %}
+                                                <a href="{{ item.link }}" target="_blank">View</a>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-dark">
+                                    <td colspan="4" class="text-end"><strong>Total Cost:</strong></td>
+                                    <td colspan="2"><strong>${{ "%.2f"|format(total_cost) }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        No items to purchase. Please check your project cuts and available inventory.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">Cutting Plans</h3>
+            </div>
+            <div class="card-body">
+                {% if cutting_plan %}
+                    {% for dimension, plans in cutting_plan.items() %}
+                        <h4 class="mt-4">{{ dimension }} mm Timber</h4>
+                        
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr class="table-secondary">
+                                        <th>Item #</th>
+                                        <th>Item Source</th>
+                                        <th>Total Length</th>
+                                        <th>Cutting Diagram</th>
+                                        <th>Waste</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for i, plan in enumerate(plans) %}
+                                        <tr>
+                                            <td>{{ i + 1 }}</td>
+                                            <td>
+                                                {{ plan.item.task }}<br>
+                                                {{ plan.item.length }} x {{ plan.item.height }} x {{ plan.item.width }} mm
+                                            </td>
+                                            <td>{{ plan.item.length }} mm</td>
+                                            <td>
+                                                <div class="cutting-diagram" style="width: 100%; height: 60px; position: relative; background-color: #f8f9fa; border-radius: 4px;">
+                                                    {% set total_length = plan.item.length %}
+                                                    {% for cut in plan.cuts %}
+                                                        {% set cut_percent = (cut.length / total_length) * 100 %}
+                                                        {% set left_pos = loop.index0 | sum_previous_lengths(plan.cuts, total_length) %}
+                                                        <div class="cut-section" 
+                                                             style="position: absolute; height: 100%; left: {{ left_pos }}%; width: {{ cut_percent }}%; background-color: #28a745; border-right: 1px dashed #000;">
+                                                            <div style="padding: 5px; color: white; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                {{ cut.label }} ({{ cut.length }}mm)
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                    
+                                                    {% if plan.waste > 0 %}
+                                                        {% set waste_percent = (plan.waste / total_length) * 100 %}
+                                                        {% set waste_left = 100 - waste_percent %}
+                                                        <div class="waste-section" 
+                                                             style="position: absolute; height: 100%; left: {{ waste_left }}%; width: {{ waste_percent }}%; background-color: #dc3545;">
+                                                            <div style="padding: 5px; color: white; font-size: 0.8rem;">
+                                                                Waste ({{ plan.waste }}mm)
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if plan.waste > 0 %}
+                                                    {{ plan.waste }} mm ({{ ((plan.waste / plan.item.length) * 100) | round(1) }}%)
+                                                {% else %}
+                                                    0 mm
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-warning">
+                        No cutting plan could be generated. Please check your project cuts and available inventory.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Custom filter to calculate the left position for each cut section
+    function sum_previous_lengths(index, cuts, total_length) {
+        let sum = 0;
+        for (let i = 0; i < index; i++) {
+            sum += (cuts[i].length / total_length) * 100;
+        }
+        return sum;
+    }
+    
+    // Register the filter (simplified for demonstration - in a real app this would be done on the server)
+    // This is just for the visualization to work in the template, actual calculation happens on the server
+    Jinja.filters.sum_previous_lengths = sum_previous_lengths;
+</script>
+{% endblock %}
