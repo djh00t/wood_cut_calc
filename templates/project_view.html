@@ -7,8 +7,54 @@
     <h2>{{ project.name }}</h2>
     <div>
         <a href="{{ url_for('add_cut') }}?project_id={{ project.id }}" class="btn btn-primary">Add Cut</a>
-        <a href="{{ url_for('generate_plan', project_id=project.id) }}" class="btn btn-success">Generate Cutting Plan</a>
+        <a href="{{ url_for('generate_plan', project_id=project.id) }}" id="generate-plan-btn" class="btn btn-success">Generate Cutting Plan</a>
+        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#copyProjectModal">Copy Project</button>
+        <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-outline-primary">Edit Project</a>
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProjectModal">Delete Project</button>
         <a href="{{ url_for('projects') }}" class="btn btn-secondary">Back to Projects</a>
+    </div>
+</div>
+
+<!-- Copy Project Modal -->
+<div class="modal fade" id="copyProjectModal" tabindex="-1" aria-labelledby="copyProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="copyProjectModalLabel">Copy Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to create a copy of this project?</p>
+                <p class="text-secondary">This will create a new project named "{{ project.name }} (Copy)" with all the same cuts{% if saved_plans %} and saved cutting plans{% endif %}.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ url_for('copy_project', project_id=project.id) }}" class="btn btn-success">Create Copy</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Project Modal -->
+<div class="modal fade" id="deleteProjectModal" tabindex="-1" aria-labelledby="deleteProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProjectModalLabel">Confirm Delete Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this project?</p>
+                <p class="mt-2 text-danger"><strong>Warning:</strong> This will permanently delete the project and all associated cuts.</p>
+                <p class="text-secondary">Project: {{ project.name }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_project', project_id=project.id) }}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete Project</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -16,6 +62,78 @@
     <div class="mb-4">
         <p>{{ project.description }}</p>
     </div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <!-- Removed duplicate "Required Cuts" heading -->
+    </div>
+    <div class="col-md-6 text-end">
+        {% if saved_plans %}
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="collapse" data-bs-target="#savedPlansContainer">
+                <i class="fas fa-folder-open"></i> Saved Plans <span class="badge bg-secondary">{{ saved_plans|length }}</span>
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+{% if saved_plans %}
+<div class="collapse mb-4" id="savedPlansContainer">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">Saved Cutting Plans</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in saved_plans %}
+                            <tr>
+                                <td>{{ plan.name }}</td>
+                                <td>{{ plan.created_at }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('view_saved_plan', project_id=project.id, plan_id=plan.id) }}" class="btn btn-outline-primary">View</a>
+                                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deletePlanModal{{ plan.id }}">Delete</button>
+                                    </div>
+                                    
+                                    <!-- Delete Plan Modal -->
+                                    <div class="modal fade" id="deletePlanModal{{ plan.id }}" tabindex="-1" aria-labelledby="deletePlanModalLabel{{ plan.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="deletePlanModalLabel{{ plan.id }}">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete this saved cutting plan?
+                                                    <p class="mt-2 text-secondary">{{ plan.name }}</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form action="{{ url_for('delete_saved_plan', project_id=project.id, plan_id=plan.id) }}" method="post" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <div class="mb-4">
@@ -29,9 +147,12 @@
                         <th>Label</th>
                         <th>Length (mm)</th>
                         <th>Width (mm)</th>
-                        <th>Depth (mm)</th>
+                        <th>Thickness (mm)</th>
                         <th>Quantity</th>
                         <th>Total Length (mm)</th>
+                        <th>Species</th>
+                        <th>Quality</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43,6 +164,48 @@
                             <td>{{ cut.depth }}</td>
                             <td>{{ cut.quantity }}</td>
                             <td>{{ cut.length * cut.quantity }}</td>
+                            <td>
+                                {% if cut.species_name %}
+                                    <span class="badge bg-info">{{ cut.species_name }}</span>
+                                {% else %}
+                                    <span class="text-muted">Any</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cut.quality_name %}
+                                    <span class="badge bg-success">{{ cut.quality_name }}</span>
+                                {% else %}
+                                    <span class="text-muted">Any</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('edit_cut', cut_id=cut.id) }}" class="btn btn-outline-primary">Edit</a>
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCutModal{{ cut.id }}">Delete</button>
+                                </div>
+                                
+                                <!-- Delete Cut Modal -->
+                                <div class="modal fade" id="deleteCutModal{{ cut.id }}" tabindex="-1" aria-labelledby="deleteCutModalLabel{{ cut.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteCutModalLabel{{ cut.id }}">Confirm Delete</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                Are you sure you want to delete this cut?
+                                                <p class="mt-2 text-secondary">{{ cut.label }}: {{ cut.length }}mm × {{ cut.width }}mm × {{ cut.depth }}mm thickness (Qty: {{ cut.quantity }})</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('delete_cut', cut_id=cut.id) }}" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -54,4 +217,64 @@
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const generatePlanBtn = document.getElementById('generate-plan-btn');
+        
+        if (generatePlanBtn) {
+            generatePlanBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Show loading indicator
+                const originalText = generatePlanBtn.textContent;
+                generatePlanBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+                generatePlanBtn.disabled = true;
+                
+                // Add a timeout to navigate if it takes too long
+                const timeout = setTimeout(function() {
+                    window.location.href = generatePlanBtn.getAttribute('href');
+                }, 10000); // 10 seconds timeout
+                
+                // Make an AJAX request to check if the endpoint is working
+                fetch(generatePlanBtn.getAttribute('href'))
+                    .then(response => {
+                        clearTimeout(timeout);
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        } else if (response.ok) {
+                            return response.text();
+                        } else {
+                            throw new Error('Server error: ' + response.status);
+                        }
+                    })
+                    .then(html => {
+                        // If we got HTML back successfully, redirect to the cutting plan page
+                        window.location.href = generatePlanBtn.getAttribute('href');
+                    })
+                    .catch(error => {
+                        console.error('Error generating cutting plan:', error);
+                        
+                        // Reset button and show error
+                        generatePlanBtn.innerHTML = originalText;
+                        generatePlanBtn.disabled = false;
+                        
+                        // Create an alert to notify the user
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger mt-3';
+                        alertDiv.textContent = 'Error generating cutting plan. Please try again or check the server logs.';
+                        
+                        // Insert the alert before the cuts list
+                        const cutsHeader = document.querySelector('h3');
+                        cutsHeader.parentNode.insertBefore(alertDiv, cutsHeader);
+                        
+                        // Remove the alert after 5 seconds
+                        setTimeout(() => alertDiv.remove(), 5000);
+                    });
+            });
+        }
+    });
+</script>
 {% endblock %}

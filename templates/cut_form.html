@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Wood Project Planner - Add Cut{% endblock %}
+{% block title %}Wood Project Planner - {% if edit_mode %}Edit{% else %}Add{% endif %} Cut{% endblock %}
 
 {% block content %}
 <div class="mb-4">
-    <h2>Add Required Cut</h2>
+    <h2>{% if edit_mode %}Edit{% else %}Add{% endif %} Required Cut</h2>
 </div>
 
 <div class="row">
@@ -14,7 +14,9 @@
                 <label for="project_id" class="form-label">Project</label>
                 <select class="form-select" id="project_id" name="project_id" required>
                     {% for project in projects %}
-                        <option value="{{ project.id }}" {% if request.args.get('project_id')|int == project.id %}selected{% endif %}>
+                        <option value="{{ project.id }}" 
+                        {% if edit_mode and cut.project_id == project.id %}selected
+                        {% elif not edit_mode and request.args.get('project_id')|int == project.id %}selected{% endif %}>
                             {{ project.name }}
                         </option>
                     {% endfor %}
@@ -22,34 +24,84 @@
             </div>
             
             <div class="mb-3">
+                <label for="species_id" class="form-label">Timber Species (Optional)</label>
+                <select class="form-select" id="species_id" name="species_id">
+                    <option value="">-- No Specific Species --</option>
+                    {% for species in species_list %}
+                        <option value="{{ species.id }}" 
+                            {% if edit_mode and cut.species_id == species.id %}selected{% endif %}>
+                            {{ species.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">
+                    Selecting a species ensures cuts are matched with the correct wood type.
+                    <a href="{{ url_for('species') }}" target="_blank">Manage species list</a>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="quality_id" class="form-label">Timber Quality (Optional)</label>
+                <select class="form-select" id="quality_id" name="quality_id">
+                    <option value="">-- No Specific Quality --</option>
+                    {% for quality in quality_list %}
+                        <option value="{{ quality.id }}" 
+                            {% if edit_mode and cut.quality_id == quality.id %}selected{% endif %}>
+                            {{ quality.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">
+                    Selecting a quality guides the cutting plan to use appropriate grade timber.
+                    <a href="{{ url_for('qualities') }}" target="_blank">Manage quality list</a>
+                </div>
+            </div>
+
+            <div class="mb-3">
                 <label for="label" class="form-label">Label/Description</label>
-                <input type="text" class="form-control" id="label" name="label" required placeholder="e.g., West Vertical, North Horizontal">
+                <input type="text" class="form-control" id="label" name="label" 
+                       value="{{ cut.label if edit_mode else '' }}"
+                       required placeholder="e.g., West Vertical, North Horizontal">
             </div>
             
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label for="length" class="form-label">Length (mm)</label>
-                    <input type="number" class="form-control" id="length" name="length" required min="1">
+                    <input type="number" class="form-control" id="length" name="length" 
+                           value="{{ cut.length if edit_mode else '' }}"
+                           required min="1">
                 </div>
                 
                 <div class="col-md-4 mb-3">
                     <label for="width" class="form-label">Width (mm)</label>
-                    <input type="number" class="form-control" id="width" name="width" required min="1">
+                    <input type="number" class="form-control" id="width" name="width" 
+                           value="{{ cut.width if edit_mode else '' }}"
+                           required min="1">
                 </div>
                 
                 <div class="col-md-4 mb-3">
-                    <label for="depth" class="form-label">Depth (mm)</label>
-                    <input type="number" class="form-control" id="depth" name="depth" required min="1">
+                    <label for="depth" class="form-label">Thickness (mm)</label>
+                    <input type="number" class="form-control" id="depth" name="depth" 
+                           value="{{ cut.depth if edit_mode else '' }}"
+                           required min="1">
                 </div>
             </div>
             
             <div class="mb-3">
                 <label for="quantity" class="form-label">Quantity</label>
-                <input type="number" class="form-control" id="quantity" name="quantity" required min="1" value="1">
+                <input type="number" class="form-control" id="quantity" name="quantity" 
+                       value="{{ cut.quantity if edit_mode else '1' }}"
+                       required min="1">
             </div>
             
-            <button type="submit" class="btn btn-primary">Add Cut</button>
-            <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}Update{% else %}Add{% endif %} Cut
+            </button>
+            {% if edit_mode %}
+                <a href="{{ url_for('view_project', project_id=cut.project_id) }}" class="btn btn-secondary">Cancel</a>
+            {% else %}
+                <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+            {% endif %}
         </form>
     </div>
 </div>

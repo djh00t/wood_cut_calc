@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - {% if edit_mode %}Edit{% else %}Add{% endif %} Timber Species{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if edit_mode %}Edit{% else %}Add{% endif %} Timber Species</h2>
+    <div>
+        <a href="{{ url_for('species') }}" class="btn btn-secondary">Back to Species List</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Species Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ species.name if species else '' }}" required>
+                        <div class="form-text">Enter the name of the timber species (e.g., Pine, Oak, Maple, etc.)</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">{% if edit_mode %}Update{% else %}Add{% endif %} Species</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">About Timber Species</h5>
+            </div>
+            <div class="card-body">
+                <p>Timber species information helps you organize your inventory and cutting plans by wood type.</p>
+                <p>Benefits of specifying species:</p>
+                <ul>
+                    <li>Match cuts to appropriate inventory items</li>
+                    <li>Ensure consistent wood type throughout a project</li>
+                    <li>Track specialized or premium woods separately</li>
+                </ul>
+                <p class="mb-0">Common examples include: Pine, Oak, Maple, Cherry, Walnut, Birch, Ash, Cedar, etc.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

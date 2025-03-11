@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - Timber Qualities{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Timber Qualities</h2>
+    <div>
+        <a href="{{ url_for('add_quality') }}" class="btn btn-primary">Add New Quality</a>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+    </div>
+</div>
+
+{% if qualities_list %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Quality Grade</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quality in qualities_list %}
+                    <tr>
+                        <td>{{ quality.name }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('edit_quality', quality_id=quality.id) }}" class="btn btn-outline-primary">Edit</a>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteQualityModal{{ quality.id }}">Delete</button>
+                            </div>
+                            
+                            <!-- Delete Quality Modal -->
+                            <div class="modal fade" id="deleteQualityModal{{ quality.id }}" tabindex="-1" aria-labelledby="deleteQualityModalLabel{{ quality.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteQualityModalLabel{{ quality.id }}">Confirm Delete</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            Are you sure you want to delete this timber quality grade?
+                                            <p class="mt-2 text-secondary">{{ quality.name }}</p>
+                                            <p class="text-danger">Note: You cannot delete a quality that is in use by inventory items.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('delete_quality', quality_id=quality.id) }}" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <p>No timber quality grades found. Add your first quality using the button above.</p>
+        <p>Examples: Premium, General Purpose, Framing, Framing (Non-Structural), etc.</p>
+    </div>
+{% endif %}
+{% endblock %}

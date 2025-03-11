@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Wood Project Planner - Add Project{% endblock %}
+{% block title %}Wood Project Planner - {% if edit_mode %}Edit{% else %}Add{% endif %} Project{% endblock %}
 
 {% block content %}
 <div class="mb-4">
-    <h2>Add Project</h2>
+    <h2>{% if edit_mode %}Edit{% else %}Add{% endif %} Project</h2>
 </div>
 
 <div class="row">
@@ -12,16 +12,23 @@
         <form method="post">
             <div class="mb-3">
                 <label for="name" class="form-label">Project Name</label>
-                <input type="text" class="form-control" id="name" name="name" required>
+                <input type="text" class="form-control" id="name" name="name" 
+                       value="{{ project.name if edit_mode else '' }}" required>
             </div>
             
             <div class="mb-3">
                 <label for="description" class="form-label">Description (Optional)</label>
-                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ project.description if edit_mode else '' }}</textarea>
             </div>
             
-            <button type="submit" class="btn btn-primary">Add Project</button>
-            <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}Update{% else %}Add{% endif %} Project
+            </button>
+            {% if edit_mode %}
+                <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn btn-secondary">Cancel</a>
+            {% else %}
+                <a href="{{ url_for('projects') }}" class="btn btn-secondary">Cancel</a>
+            {% endif %}
         </form>
     </div>
 </div>

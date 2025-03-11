@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Wood Project Planner - {% if edit_mode %}Edit{% else %}Add{% endif %} Timber Quality{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if edit_mode %}Edit{% else %}Add{% endif %} Timber Quality</h2>
+    <div>
+        <a href="{{ url_for('qualities') }}" class="btn btn-secondary">Back to Qualities List</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Quality Grade Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ quality.name if quality else '' }}" required>
+                        <div class="form-text">Enter the name of the timber quality grade (e.g., Premium, General Purpose, etc.)</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">{% if edit_mode %}Update{% else %}Add{% endif %} Quality</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">About Timber Qualities</h5>
+            </div>
+            <div class="card-body">
+                <p>Timber quality grades help you categorize your inventory based on finish quality and intended use.</p>
+                <p>Benefits of specifying quality grades:</p>
+                <ul>
+                    <li>Match appropriate timber quality to project requirements</li>
+                    <li>Organize inventory by structural vs. finish grade</li>
+                    <li>Optimize costs by using appropriate quality for each purpose</li>
+                </ul>
+                <p class="mb-0">Common examples include:</p>
+                <ul>
+                    <li><strong>Premium</strong> - Highest quality, minimal defects, suitable for fine furniture</li>
+                    <li><strong>General Purpose</strong> - Good quality for most projects</li>
+                    <li><strong>Framing</strong> - Structural timber for building frames</li>
+                    <li><strong>Framing (Non-Structural)</strong> - Used for non-load bearing frames</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
