@@ -2,6 +2,9 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get install weasyprint
+
 # Install Poetry
 RUN pip install poetry
 
