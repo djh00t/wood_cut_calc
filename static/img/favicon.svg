@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+  <!-- Background rect with rounded corners -->
+  <rect width="16" height="16" rx="2" fill="#8B4513"/>
+  
+  <!-- Wood grain lines -->
+  <path d="M2 3C3 3.5 5 4 8 4C11 4 13 3.5 14 3" stroke="#A0522D" stroke-width="0.75"/>
+  <path d="M2 6C3 6.5 5 7 8 7C11 7 13 6.5 14 6" stroke="#A0522D" stroke-width="0.75"/>
+  <path d="M2 9C3 9.5 5 10 8 10C11 10 13 9.5 14 9" stroke="#A0522D" stroke-width="0.75"/>
+  <path d="M2 12C3 12.5 5 13 8 13C11 13 13 12.5 14 12" stroke="#A0522D" stroke-width="0.75"/>
+  
+  <!-- Ruler mark lines -->
+  <path d="M2 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M4 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M6 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M8 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M10 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M12 1V15" stroke="#EECC99" stroke-width="0.5"/>
+  <path d="M14 1V15" stroke="#EECC99" stroke-width="0.5"/>
+</svg>
