@@ -1,0 +1,14 @@
+id,supplier_id,task,length,height,width,price,link
+1,1,Tasmanian Oak - Select - Dressed All Round,1800,19,185,45.45,https://www.bunnings.com.au/185-x-19mm-1-8m-dar-tasmanian-oak-select-1-8m_p0070424
+2,1,Pine - General Purpose - Dressed All Round,2400,42,42,28.1,https://www.bunnings.com.au/porta-42-x-42mm-2-4m-dar-square-general-purpose-pine_p0021184
+3,1,Pine - General Purpose - Dressed All Round,1200,42,42,14.0,https://www.bunnings.com.au/porta-42-x-42mm-1-2m-dar-square-general-purpose-pine_p0021181
+4,1,Tasmanian Oak - Select - Dressed All Round,2400,19,185,59.25,https://www.bunnings.com.au/185-x-19mm-2-4m-dar-tasmanian-oak-select_p0070427
+5,1,Pine - Premium - Dressed All Round,3000,19,184,56.7,https://www.bunnings.com.au/184-x-19mm-3-0m-dar-rectangle-premium-pine_p0211255
+6,1,Pine - Premium - Dressed All Round,2400,19,184,31.06,https://www.bunnings.com.au/184-x-19mm-2-4m-dar-pine-premium_p8401471
+7,1,Pine - Premium - Dressed All Round,1200,19,184,18.14,https://www.bunnings.com.au/184-x-19mm-1-2m-dar-pine-premium_p8401500
+8,1,Pine - General Purpose - Dressed All Round,2400,30,30,14.7,https://www.bunnings.com.au/porta-30-x-30mm-2-4m-dar-square-general-purpose-pine_p0021344
+9,1,Pine - General Purpose - Dressed All Round,1200,30,30,8.4,https://www.bunnings.com.au/porta-30-x-30mm-1-2m-dar-square-general-purpose-pine_p0021342
+10,1,Pine - General Purpose - Dressed All Round,2400,30,42,17.7,https://www.bunnings.com.au/porta-42-x-30mm-2-4m-dar-rectangle-general-purpose-pine_p0021347
+11,1,Pine - General Purpose - Dressed All Round,1200,30,42,10.3,https://www.bunnings.com.au/porta-42-x-30mm-1-2m-dar-rectangle-general-purpose-pine_p0021346
+12,1,Pine - General Purpose - Dressed All Round,3000,19,42,14.8,https://www.bunnings.com.au/42-x-19mm-3-0m-dar-rectangle-premium-pine_p0211233
+13,1,Pine - General Purpose - Dressed All Round,2400,19,42,12.0,https://www.bunnings.com.au/42-x-19mm-2-4m-dar-rectangle-premium-pine_p0211232

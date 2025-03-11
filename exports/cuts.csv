@@ -1,0 +1,10 @@
+id,project_id,label,length,width,depth,quantity
+1,1,West and North Vertical,614,42,42,8
+2,1,North & West Horizontal,185,42,42,8
+3,1,West Width,1415,42,42,4
+4,1,West Diagonal,715,42,42,4
+5,1,North Width,1615,42,42,4
+6,1,North Diagonal,812,42,42,4
+7,1,Western Box,1600,185,19,4
+8,1,Northern Box,1800,185,19,4
+9,1,End Caps,800,185,19,2
