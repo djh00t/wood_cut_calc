@@ -67,4 +67,14 @@
 - Implement testing framework (pytest)
 - Implement CI/CD pipeline (GitHub Actions)
 
+## Database Migrations
+
+When making database schema changes:
+1. Always export existing data before applying schema changes
+2. Apply schema modifications (ALTER TABLE, CREATE TABLE, etc.)
+3. Re-import the data with proper mapping to the new fields
+4. Verify data integrity after migration is complete
+
+This ensures no user data is lost during schema evolution.
+
 When working on this project, maintain the existing patterns and document any complex algorithms with detailed comments.
