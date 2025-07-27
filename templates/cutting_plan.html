@@ -7,13 +7,11 @@
     <h2>Cutting Plan for {{ project.name }}</h2>
     <div>
         <button class="btn btn-primary" onclick="window.print()">Print Plan</button>
-        
         {% if temp_plan_data %}
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#savePlanModal">
             <i class="fas fa-save"></i> Save Plan
         </button>
         {% endif %}
-        
         <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn btn-secondary">Back to Project</a>
     </div>
 </div>
@@ -66,194 +64,366 @@
 </div>
 {% endif %}
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h3 class="mb-0">Shopping List</h3>
-            </div>
-            <div class="card-body">
-                {% if shopping_list %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Dimensions (L×W×T mm)</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total Price</th>
-                                    <th>Link</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% set total_cost = [0] %}
-                                {% for key, item_data in shopping_list.items() %}
-                                    {% set item = item_data.item %}
-                                    {% set quantity = item_data.quantity %}
-                                    {% set item_total = item_data.total_price %}
-                                    {% set _ = total_cost.append(item_total) %}
-                                    
+<div class="accordion" id="solutionAccordion">
+    <!-- Reset solution counter at the start -->
+    {% set ns = namespace(solution_idx=0) %}
+    {% for solution in solutions %}
+        {% set ns.solution_idx = ns.solution_idx + 1 %}
+        <div class="accordion-item mb-3">
+            <h2 class="accordion-header" id="heading{{ ns.solution_idx }}">
+                <button class="accordion-button {% if not (ns.solution_idx == 1) %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ ns.solution_idx }}" aria-expanded="{{ 'true' if ns.solution_idx == 1 else 'false' }}" aria-controls="collapse{{ ns.solution_idx }}">
+                    <span class="me-3"><strong>Solution {{ ns.solution_idx }}</strong></span>
+                    <span class="badge bg-primary ms-2">
+                        Total: ${{ '%.2f'|format(solution.total_cost) }}
+                        {% if solution.shipping_cost is defined and solution.shipping_cost > 0 %}
+                            (Materials: ${{ '%.2f'|format(solution.material_cost) }} + Shipping: ${{ '%.2f'|format(solution.shipping_cost) }})
+                        {% endif %}
+                    </span>
+                    <span class="badge bg-secondary ms-2">Waste: {{ '%.1f'|format(solution.waste_percentage) }}%</span>
+                    {% if solution.wildcard_assignments %}
+                        <span class="badge bg-info ms-2">{{ solution.wildcard_assignments|length }} Wildcard Assignments</span>
+                    {% endif %}
+                </button>
+            </h2>
+            <div id="collapse{{ ns.solution_idx }}" class="accordion-collapse collapse {% if ns.solution_idx == 1 %}show{% endif %}" aria-labelledby="heading{{ ns.solution_idx }}" data-bs-parent="#solutionAccordion">
+                <div class="accordion-body">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <h5>Shopping List</h5>
+                            {% if solution.shopping_list and solution.shopping_list.items()|list|length > 0 %}
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Dimensions</th>
+                                        <th>Supplier</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total Price</th>
+                                        <th>Link</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item_id, item_data in solution.shopping_list.items() %}
                                     <tr>
                                         <td>
-                                            {% if item.product_name is defined %}
-                                                {{ item.product_name }}
-                                            {% elif item.task is defined %}
-                                                {{ item.task }}
+                                            {% if item_data.item.product_name is defined %}
+                                                {{ item_data.item.product_name }}
+                                            {% elif item_data.item.task is defined %}
+                                                {{ item_data.item.task }}
                                             {% else %}
-                                                Item #{{ item.id }}
+                                                Item #{{ item_data.item.id }}
                                             {% endif %}
                                         </td>
-                                        <td>{{ item.length }} × {{ item.width }} × {{ item.height }}</td>
-                                        <td>{{ quantity }}</td>
-                                        <td>${{ "%.2f"|format(item.price) }}</td>
-                                        <td>${{ "%.2f"|format(item_total) }}</td>
+                                        <td>{{ item_data.item.length }} × {{ item_data.item.width }} × {{ item_data.item.height }}</td>
                                         <td>
-                                            {% if item.link %}
-                                                <a href="{{ item.link }}" target="_blank">View</a>
+                                            {% if item_data.item.supplier_name %}
+                                                {{ item_data.item.supplier_name }}
                                             {% else %}
                                                 -
                                             {% endif %}
                                         </td>
+                                        <td>{{ item_data.quantity }}</td>
+                                        <td>${{ '%.2f'|format(item_data.item.price) }}</td>
+                                        <td>${{ '%.2f'|format(item_data.total_price) }}</td>
+                                        <td>
+                                            {% if item_data.item.link %}
+                                                <a href="{{ item_data.item.link }}" target="_blank">View</a>
+                                            {% else %}-{% endif %}
+                                        </td>
                                     </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-dark">
-                                    <td colspan="4" class="text-end"><strong>Total Cost:</strong></td>
-                                    <td colspan="2"><strong>${{ "%.2f"|format(total_cost|sum) }}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="alert alert-warning">
-                        No items to purchase. Please check your project cuts and available inventory.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h3 class="mb-0">Cutting Plans</h3>
-            </div>
-            <div class="card-body">
-                {% if cutting_plan %}
-                    {% for dimension, plans in cutting_plan.items() %}
-                        <h4 class="mt-4">{{ dimension }} mm Timber</h4>
-                        
-                        <!-- Removed general cost-optimization alert -->
-                        
-                        <div class="table-responsive mb-4">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr class="table-secondary">
-                                        <th>Item #</th>
-                                        <th>Item Source</th>
-                                        <th>Total Length</th>
-                                        <th>Cutting Diagram</th>
-                                        <th>Waste / Efficiency Notes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for i, plan in enumerate(plans) %}
-                                        <tr>
-                                            <td>{{ i + 1 }}</td>
-                                            <td>
-                                                {% if plan.item.product_name is defined %}
-                                                    {{ plan.item.product_name }}
-                                                {% elif plan.item.task is defined %}
-                                                    {{ plan.item.task }}
-                                                {% else %}
-                                                    Item #{{ plan.item.id }}
-                                                {% endif %}<br>
-                                                {{ plan.item.length }} × {{ plan.item.width }} × {{ plan.item.height }} mm
-                                            </td>
-                                            <td>{{ plan.item.length }} mm</td>
-                                            <td>
-                                                <div class="cutting-diagram" style="width: 100%; height: 60px; position: relative; background-color: #f8f9fa; border-radius: 4px;">
-                                                    {% set total_length = plan.item.length %}
-                                                    {% for cut in plan.cuts %}
-                                                        {% set cut_percent = (cut.length / total_length) * 100 %}
-                                                        {% set left_pos = loop.index0 | sum_previous_lengths(plan.cuts, total_length) %}
-                                                        <div class="cut-section" 
-                                                             style="position: absolute; height: 100%; left: {{ left_pos }}%; width: {{ cut_percent }}%; background-color: #28a745; border-right: 1px dashed #000;">
-                                                            <div style="padding: 5px; color: white; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                <strong>{{ loop.index }}</strong> ({{ cut.length }}mm)
-                                                            </div>
-                                                        </div>
-                                                    {% endfor %}
-                                                    
-                                                    {% if plan.waste > 0 %}
-                                                        {% set waste_percent = (plan.waste / total_length) * 100 %}
-                                                        {% set waste_left = 100 - waste_percent %}
-                                                        <div class="waste-section" 
-                                                             style="position: absolute; height: 100%; left: {{ waste_left }}%; width: {{ waste_percent }}%; background-color: #dc3545;">
-                                                            <div style="padding: 5px; color: white; font-size: 0.8rem;">
-                                                                Waste ({{ plan.waste }}mm)
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                                
-                                                <!-- Cut details table -->
-                                                <div class="mt-2">
-                                                    <table class="table table-sm table-bordered mb-0">
-                                                        <thead class="table-light">
-                                                            <tr>
-                                                                <th>#</th>
-                                                                <th>Part</th>
-                                                                <th>Length</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {% for cut in plan.cuts %}
-                                                                <tr>
-                                                                    <td><strong>{{ loop.index }}</strong></td>
-                                                                    <td>{{ cut.label }}</td>
-                                                                    <td>{{ cut.length }}mm</td>
-                                                                </tr>
-                                                            {% endfor %}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                {% if plan.waste > 0 %}
-                                                    {{ plan.waste }} mm ({{ ((plan.waste / plan.item.length) * 100) | round(1) }}%)
-                                                    {% if plan.is_cost_efficient %}
-                                                        <div class="mt-1 text-info border-top pt-1">
-                                                            <small><i class="fas fa-info-circle"></i> <strong>Cost optimization:</strong> {{ plan.efficiency_note }}</small>
-                                                        </div>
-                                                    {% endif %}
-                                                {% else %}
-                                                    0 mm
-                                                {% endif %}
-                                            </td>
-                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            
+                            <!-- Cost Breakdown -->
+                            {% if solution.shipping_cost is defined and solution.shipping_cost > 0 %}
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-calculator"></i> Cost Breakdown</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Materials:</strong>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            ${{ '%.2f'|format(solution.material_cost) }}
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Shipping:</strong>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            ${{ '%.2f'|format(solution.shipping_cost) }}
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Total:</strong>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <strong>${{ '%.2f'|format(solution.total_cost) }}</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if solution.shipping_by_supplier %}
+                                    <div class="mt-3">
+                                        <h6>Shipping by Supplier:</h6>
+                                        {% for supplier_id, supplier_info in solution.shipping_by_supplier.items() %}
+                                        <div class="row small">
+                                            <div class="col-8">
+                                                {{ supplier_info.supplier_name }}
+                                            </div>
+                                            <div class="col-4 text-end">
+                                                ${{ '%.2f'|format(supplier_info.shipping_cost) }}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> No matching inventory found</h6>
+                                <p>The system couldn't find any inventory items that match the required dimensions for your cuts.</p>
+                                <hr>
+                                <p class="mb-0">Consider adding inventory items with the following dimensions:</p>
+                                <ul class="mt-2">
+                                    {% for assignment in solution.wildcard_assignments %}
+                                        {% for cut in solution.assignments %}
+                                            {% if cut.cut.id == assignment.cut_id %}
+                                                <li>{{ cut.cut.label }}: Width {{ assignment.width }}mm, Depth {{ assignment.depth }}mm, Length {{ cut.cut.length }}mm</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if solution.wildcard_assignments %}
+                            <h5 class="mt-4">Wildcard Assignments</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Part</th>
+                                        <th>Assigned Dimensions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assignment in solution.wildcard_assignments %}
+                                    <tr>
+                                        <td>
+                                            {% for cut in solution.assignments %}
+                                                {% if cut.cut.id == assignment.cut_id %}
+                                                    {{ cut.cut.label }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        <td>Width: {{ assignment.width }}mm, Depth: {{ assignment.depth }}mm</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
                         </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="alert alert-warning">
-                        No cutting plan could be generated. Please check your project cuts and available inventory.
+                        
+                        <div class="col-md-7">
+                            <h5>Cutting Plan</h5>
+                            
+                            {% if solution.svg_diagrams %}
+                                <div class="accordion" id="sheetAccordion{{ ns.solution_idx }}">
+                                    {% for sheet_id, svg in solution.svg_diagrams.items() %}
+                                        <div class="accordion-item mb-2">
+                                            <h2 class="accordion-header" id="sheetHeading{{ ns.solution_idx }}_{{ loop.index }}">
+                                                <button class="accordion-button collapsed" type="button" 
+                                                        data-bs-toggle="collapse" 
+                                                        data-bs-target="#sheetCollapse{{ ns.solution_idx }}_{{ loop.index }}" 
+                                                        aria-expanded="false" 
+                                                        aria-controls="sheetCollapse{{ ns.solution_idx }}_{{ loop.index }}">
+                                                    <span class="me-2">Sheet {{ sheet_id }}</span>
+                                                </button>
+                                            </h2>
+                                            <div id="sheetCollapse{{ ns.solution_idx }}_{{ loop.index }}" 
+                                                 class="accordion-collapse collapse" 
+                                                 aria-labelledby="sheetHeading{{ ns.solution_idx }}_{{ loop.index }}" 
+                                                 data-bs-parent="#sheetAccordion{{ ns.solution_idx }}">
+                                                <div class="accordion-body p-2">
+                                                    <div class="svg-container mb-3">
+                                                        {{ svg|safe }}
+                                                    </div>
+                                                    
+                                                    <div class="mt-2">
+                                                        <h6>Parts on this sheet:</h6>
+                                                        <table class="table table-sm table-bordered mb-0">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th>Part #</th>
+                                                                    <th>Description</th>
+                                                                    <th>Dimensions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for assignment in solution.assignments %}
+                                                                    {% if assignment.sheet_id == sheet_id %}
+                                                                    <tr>
+                                                                        <td><strong>{{ sheet_id }}.{{ assignment.part_id }}</strong></td>
+                                                                        <td>{{ assignment.cut.label }}</td>
+                                                                        <td>
+                                                                            {{ assignment.cut.length }} × 
+                                                                            {% if assignment.rotated %}
+                                                                                {{ assignment.cut.depth }} × {{ assignment.cut.width }}
+                                                                            {% else %}
+                                                                                {{ assignment.cut.width }} × {{ assignment.cut.depth }}
+                                                                            {% endif %}
+                                                                            mm
+                                                                            {% if assignment.rotated %}(rotated){% endif %}
+                                                                        </td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <!-- Fallback to original cutting plan display -->
+                                <div class="table-responsive mb-2">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr class="table-secondary">
+                                                <th>Item Source</th>
+                                                <th>Total Length</th>
+                                                <th>Cutting Diagram</th>
+                                                <th>Waste / Efficiency Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for dimension, plans in solution.cutting_plan.items() %}
+                                                {% for plan in plans %}
+                                                <tr>
+                                                    <td>
+                                                        {% if plan.item.product_name is defined %}
+                                                            {{ plan.item.product_name }}
+                                                        {% elif plan.item.task is defined %}
+                                                            {{ plan.item.task }}
+                                                        {% else %}
+                                                            Item #{{ plan.item.id }}
+                                                        {% endif %}<br>
+                                                        {{ plan.item.length }} × {{ plan.item.width }} × {{ plan.item.height }} mm
+                                                    </td>
+                                                    <td>{{ plan.item.length }} mm</td>
+                                                    <td>
+                                                        <div class="cutting-diagram" style="width: 100%; height: 60px; position: relative; background-color: #f8f9fa; border-radius: 4px;">
+                                                            {% set total_length = plan.item.length %}
+                                                            {% for cut in plan.cuts %}
+                                                                {% set cut_percent = (cut.cut.length / total_length) * 100 %}
+                                                                {% set left_pos = loop.index0 | sum_previous_lengths(plan.cuts, total_length) %}
+                                                                <div class="cut-section" 
+                                                                     style="position: absolute; height: 100%; left: {{ left_pos }}%; width: {{ cut_percent }}%; background-color: #28a745; border-right: 1px dashed #000;">
+                                                                    <div style="padding: 5px; color: white; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                        <strong>{{ loop.index }}</strong> ({{ cut.cut.length }}mm)
+                                                                    </div>
+                                                                </div>
+                                                            {% endfor %}
+                                                            {% set used_length = 0 %}
+                                                            {% for cut in plan.cuts %}
+                                                                {% set used_length = used_length + cut.cut.length %}
+                                                            {% endfor %}
+                                                            {% set waste_length = total_length - used_length %}
+                                                            {% if waste_length > 0 %}
+                                                                {% set waste_percent = (waste_length / total_length) * 100 %}
+                                                                {% set waste_left = 100 - waste_percent %}
+                                                                <div class="waste-section" 
+                                                                     style="position: absolute; height: 100%; left: {{ waste_left }}%; width: {{ waste_percent }}%; background-color: #dc3545;">
+                                                                    <div style="padding: 5px; color: white; font-size: 0.8rem;">
+                                                                        Waste ({{ waste_length }}mm)
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="mt-2">
+                                                            <table class="table table-sm table-bordered mb-0">
+                                                                <thead class="table-light">
+                                                                    <tr>
+                                                                        <th>#</th>
+                                                                        <th>Part</th>
+                                                                        <th>Length</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {% for cut in plan.cuts %}
+                                                                        <tr>
+                                                                            <td><strong>{{ loop.index }}</strong></td>
+                                                                            <td>{{ cut.cut.label }}</td>
+                                                                            <td>{{ cut.cut.length }}mm</td>
+                                                                        </tr>
+                                                                    {% endfor %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {% set used_length = 0 %}
+                                                        {% for cut in plan.cuts %}
+                                                            {% set used_length = used_length + cut.cut.length %}
+                                                        {% endfor %}
+                                                        {% set waste_length = plan.item.length - used_length %}
+                                                        {% if waste_length > 0 %}
+                                                            {{ waste_length }} mm ({{ ((waste_length / plan.item.length) * 100) | round(1) }}%)
+                                                            {% if plan.cost_efficiency_score is defined %}
+                                                                <div class="mt-1 text-info border-top pt-1">
+                                                                    <small><i class="fas fa-info-circle"></i> <strong>Efficiency Score:</strong> {{ plan.cost_efficiency_score | round(2) }}</small>
+                                                                </div>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            0 mm (Perfect fit!)
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
-                {% endif %}
+                </div>
             </div>
         </div>
-    </div>
+    {% endfor %}
 </div>
+
+<style>
+.svg-container {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: #f8f9fa;
+    overflow-x: auto;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Custom JavaScript can be added here if needed for future enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    // Open the first sheet in the first solution for better UX
+    setTimeout(function() {
+        const firstSheetButton = document.querySelector('#sheetAccordion1 .accordion-button');
+        if (firstSheetButton) {
+            firstSheetButton.click();
+        }
+    }, 500);
+});
 </script>
 {% endblock %}
