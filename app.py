@@ -1,9 +1,92 @@
+from typing import Any, Dict, List, Optional, TypedDict
+
+
+class CutDict(TypedDict):
+    """Dictionary type for a cut item.
+
+    Attributes:
+        id: Unique identifier for the cut.
+        project_id: Associated project ID.
+        species_id: Species ID (optional).
+        quality_id: Quality ID (optional).
+        label: Label for the cut.
+        length: Length in mm.
+        width: Width in mm.
+        depth: Depth in mm.
+        quantity: Quantity required.
+        species_name: Name of the species (optional).
+        quality_name: Name of the quality (optional).
+    """
+    id: int
+    project_id: int
+    species_id: Optional[int]
+    quality_id: Optional[int]
+    label: str
+    length: int
+    width: int
+    depth: int
+    quantity: int
+    species_name: Optional[str]
+    quality_name: Optional[str]
+
+class InventoryDict(TypedDict):
+    """Dictionary type for an inventory item.
+
+    Attributes:
+        id: Unique identifier for the inventory item.
+        supplier_id: Supplier ID.
+        species_id: Species ID.
+        quality_id: Optional quality ID.
+        product_name: Name of the product.
+        length: Length in mm.
+        height: Height in mm.
+        width: Width in mm.
+        price: Price of the item.
+        link: Optional link to the product.
+        species_name: Name of the species (optional).
+        quality_name: Name of the quality (optional).
+    """
+    id: int
+    supplier_id: int
+    species_id: int
+    quality_id: Optional[int]
+    product_name: str
+    length: int
+    height: int
+    width: int
+    price: float
+    link: str
+    species_name: Optional[str]
+    quality_name: Optional[str]
+
+class PlanItem(TypedDict):
+    """Dictionary type for a cutting plan item.
+
+    Attributes:
+        item: The inventory item used.
+        cuts: List of cuts assigned to this item.
+        waste: Waste length in mm.
+        waste_percent: Waste as a percentage.
+        is_cost_efficient: Whether this plan is cost efficient.
+        efficiency_note: Optional note about efficiency.
+    """
+    item: InventoryDict
+    cuts: List[CutDict]
+    waste: int
+    waste_percent: float
+    is_cost_efficient: bool
+    efficiency_note: str
+
+
+import itertools
+import json
+import logging
 import os
 import sqlite3
-import logging
-import json
-from flask import Flask, render_template, request, redirect, url_for, flash, g, jsonify
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, cast
+
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -58,34 +141,10 @@ def modify_db(query, args=()):
     db.execute(query, args)
     db.commit()
 
-# Register template filters
-@app.template_filter('sum_previous_lengths')
-def sum_previous_lengths(index, cuts, total_length):
-    """
-    Calculate the left position for each cut section in the cutting diagram.
-    
-    Args:
-        index: Current index in the loop
-        cuts: List of cuts
-        total_length: Total length of the item
-        
-    Returns:
-        Percentage position from the left
-    """
-    try:
-        logger.debug(f"sum_previous_lengths called with index={index}, total_length={total_length}")
-        logger.debug(f"cuts data: {cuts[:index] if index > 0 else []}")
-        
-        sum_length = 0
-        for i in range(index):
-            sum_length += cuts[i]['length']
-        
-        result = (sum_length / total_length) * 100
-        logger.debug(f"sum_previous_lengths result: {result}%")
-        return result
-    except Exception as e:
-        logger.error(f"Error in sum_previous_lengths: {str(e)}", exc_info=True)
-        return 0  # Return a safe default value
+# Register custom template filters
+from custom_filters import bp as filters_bp
+
+app.register_blueprint(filters_bp)
 
 # Make helpful functions available in templates
 app.jinja_env.globals['enumerate'] = enumerate
@@ -251,12 +310,76 @@ def suppliers():
 def add_supplier():
     if request.method == 'POST':
         name = request.form['name']
+        shipping_cost = float(request.form.get('shipping_cost', 0.0))
         
-        modify_db('INSERT INTO suppliers (name) VALUES (?)', [name])
+        # Check if shipping_cost column exists
+        col_info = query_db("PRAGMA table_info(suppliers)")
+        has_shipping_cost = any(col['name'] == 'shipping_cost' for col in col_info)
+        
+        try:
+            if has_shipping_cost:
+                modify_db('INSERT INTO suppliers (name, shipping_cost) VALUES (?, ?)', 
+                         [name, shipping_cost])
+            else:
+                modify_db('INSERT INTO suppliers (name) VALUES (?)', [name])
+                flash('Note: Shipping cost not saved. Please run migrations to add shipping support.', 'warning')
+        except Exception as e:
+            logger.error("Error adding supplier: %s", e)
+            flash('Error adding supplier. Please try again.', 'danger')
+            return render_template('supplier_form.html')
+            
         flash('Supplier added successfully!', 'success')
         return redirect(url_for('suppliers'))
     
     return render_template('supplier_form.html')
+
+@app.route('/supplier/<int:supplier_id>/edit', methods=['GET', 'POST'])
+def edit_supplier(supplier_id):
+    supplier = query_db('SELECT * FROM suppliers WHERE id = ?', [supplier_id], one=True)
+    
+    if not supplier:
+        flash('Supplier not found', 'danger')
+        return redirect(url_for('suppliers'))
+    
+    if request.method == 'POST':
+        name = request.form['name']
+        shipping_cost = float(request.form.get('shipping_cost', 0.0))
+        
+        # Check if shipping_cost column exists
+        col_info = query_db("PRAGMA table_info(suppliers)")
+        has_shipping_cost = any(col['name'] == 'shipping_cost' for col in col_info)
+        
+        try:
+            if has_shipping_cost:
+                modify_db('UPDATE suppliers SET name = ?, shipping_cost = ? WHERE id = ?', 
+                         [name, shipping_cost, supplier_id])
+            else:
+                modify_db('UPDATE suppliers SET name = ? WHERE id = ?', [name, supplier_id])
+                flash('Note: Shipping cost not saved. Please run migrations to add shipping support.', 'warning')
+        except Exception as e:
+            logger.error("Error updating supplier: %s", e)
+            flash('Error updating supplier. Please try again.', 'danger')
+            return render_template('supplier_form.html', supplier=supplier, edit_mode=True)
+            
+        flash('Supplier updated successfully!', 'success')
+        return redirect(url_for('suppliers'))
+    
+    return render_template('supplier_form.html', supplier=supplier, edit_mode=True)
+
+@app.route('/supplier/<int:supplier_id>/delete', methods=['POST'])
+def delete_supplier(supplier_id):
+    # Check if supplier is used in inventory
+    inventory_count = query_db('SELECT COUNT(*) FROM inventory WHERE supplier_id = ?', [supplier_id], one=True)[0]
+    
+    if inventory_count > 0:
+        flash('Cannot delete supplier that has inventory items', 'danger')
+        return redirect(url_for('suppliers'))
+    
+    # Delete the supplier
+    modify_db('DELETE FROM suppliers WHERE id = ?', [supplier_id])
+    
+    flash('Supplier deleted successfully!', 'success')
+    return redirect(url_for('suppliers'))
 
 @app.route('/supplier/<int:supplier_id>')
 def view_supplier(supplier_id):
@@ -516,7 +639,7 @@ def edit_inventory(item_id):
                         modify_db("INSERT INTO qualities (name) VALUES (?)", [quality])
                         logger.info(f"Added default quality: {quality}")
                     except sqlite3.IntegrityError:
-                        pass  # Already exists
+                        pass  #
                 
                 # Fetch the qualities again
                 quality_list = query_db('SELECT * FROM qualities')
@@ -626,9 +749,14 @@ def add_project():
     if request.method == 'POST':
         name = request.form['name']
         description = request.form.get('description', '')
+        allow_timber_joining = 'allow_timber_joining' in request.form
         
-        modify_db('INSERT INTO projects (name, description, created_at) VALUES (?, ?, ?)',
-                 [name, description, datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        modify_db(
+            'INSERT INTO projects (name, description, allow_timber_joining, created_at) '
+            'VALUES (?, ?, ?, ?)',
+            [name, description, allow_timber_joining, 
+             datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+        )
         
         flash('Project added successfully!', 'success')
         return redirect(url_for('projects'))
@@ -672,9 +800,12 @@ def edit_project(project_id):
     if request.method == 'POST':
         name = request.form['name']
         description = request.form.get('description', '')
+        allow_timber_joining = 'allow_timber_joining' in request.form
         
-        modify_db('UPDATE projects SET name = ?, description = ? WHERE id = ?',
-                 [name, description, project_id])
+        modify_db(
+            'UPDATE projects SET name = ?, description = ?, allow_timber_joining = ? WHERE id = ?',
+            [name, description, allow_timber_joining, project_id]
+        )
         
         flash('Project updated successfully!', 'success')
         return redirect(url_for('view_project', project_id=project_id))
@@ -776,20 +907,46 @@ def add_cut():
         width = int(request.form['width'])
         depth = int(request.form['depth'])
         quantity = int(request.form['quantity'])
+        allow_joining = 1 if request.form.get('allow_joining') else 0
         
-        # Check if quality_id column exists
+        # Check if allow_joining column exists and insert accordingly
         try:
             modify_db('''
-                INSERT INTO cuts (project_id, species_id, label, length, width, depth, quantity, quality_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', [project_id, species_id, label, length, width, depth, quantity, quality_id])
+                INSERT INTO cuts (
+                    project_id, species_id, label, length, width, depth, 
+                    quantity, quality_id, allow_joining
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', [
+                project_id, species_id, label, length, width, depth, 
+                quantity, quality_id, allow_joining
+            ])
         except sqlite3.OperationalError:
-            # Fallback if quality_id doesn't exist
-            modify_db('''
-                INSERT INTO cuts (project_id, species_id, label, length, width, depth, quantity) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', [project_id, species_id, label, length, width, depth, quantity])
-            flash('Database schema needs to be updated. Please run the migration script.', 'warning')
+            # Fallback if allow_joining doesn't exist yet
+            try:
+                modify_db('''
+                    INSERT INTO cuts (
+                        project_id, species_id, label, length, width, depth, 
+                        quantity, quality_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', [
+                    project_id, species_id, label, length, width, depth, 
+                    quantity, quality_id
+                ])
+            except sqlite3.OperationalError:
+                # Fallback if quality_id doesn't exist
+                modify_db('''
+                    INSERT INTO cuts (
+                        project_id, species_id, label, length, width, depth, 
+                        quantity
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', [
+                    project_id, species_id, label, length, width, depth, 
+                    quantity
+                ])
+                flash(
+                    'Database schema needs updating. Run migration script.', 
+                    'warning'
+                )
         
         flash('Cut added successfully!', 'success')
         return redirect(url_for('view_project', project_id=project_id))
@@ -827,22 +984,47 @@ def edit_cut(cut_id):
         width = int(request.form['width'])
         depth = int(request.form['depth'])
         quantity = int(request.form['quantity'])
+        allow_joining = 1 if request.form.get('allow_joining') else 0
         
-        # Check if quality_id column exists
+        # Check if allow_joining column exists and update accordingly
         try:
             modify_db('''
                 UPDATE cuts SET 
-                project_id = ?, species_id = ?, label = ?, length = ?, width = ?, depth = ?, quantity = ?, quality_id = ? 
+                    project_id = ?, species_id = ?, label = ?, length = ?, 
+                    width = ?, depth = ?, quantity = ?, quality_id = ?, 
+                    allow_joining = ?
                 WHERE id = ?
-            ''', [project_id, species_id, label, length, width, depth, quantity, quality_id, cut_id])
+            ''', [
+                project_id, species_id, label, length, width, depth, 
+                quantity, quality_id, allow_joining, cut_id
+            ])
         except sqlite3.OperationalError:
-            # Fallback if quality_id doesn't exist
-            modify_db('''
-                UPDATE cuts SET 
-                project_id = ?, species_id = ?, label = ?, length = ?, width = ?, depth = ?, quantity = ? 
-                WHERE id = ?
-            ''', [project_id, species_id, label, length, width, depth, quantity, cut_id])
-            flash('Database schema needs to be updated. Please run the migration script.', 'warning')
+            # Fallback if allow_joining doesn't exist yet
+            try:
+                modify_db('''
+                    UPDATE cuts SET 
+                        project_id = ?, species_id = ?, label = ?, length = ?, 
+                        width = ?, depth = ?, quantity = ?, quality_id = ?
+                    WHERE id = ?
+                ''', [
+                    project_id, species_id, label, length, width, depth, 
+                    quantity, quality_id, cut_id
+                ])
+            except sqlite3.OperationalError:
+                # Fallback if quality_id doesn't exist
+                modify_db('''
+                    UPDATE cuts SET 
+                        project_id = ?, species_id = ?, label = ?, length = ?, 
+                        width = ?, depth = ?, quantity = ?
+                    WHERE id = ?
+                ''', [
+                    project_id, species_id, label, length, width, depth, 
+                    quantity, cut_id
+                ])
+                flash(
+                    'Database schema needs updating. Run migration script.', 
+                    'warning'
+                )
         
         flash('Cut updated successfully!', 'success')
         return redirect(url_for('view_project', project_id=project_id))
@@ -879,134 +1061,55 @@ def delete_cut(cut_id):
 @app.route('/project/<int:project_id>/plan')
 def generate_plan(project_id):
     logger.debug(f"Starting generate_plan for project_id={project_id}")
+
+    # fetch project details
+    project = query_db('SELECT * FROM projects WHERE id = ?',
+                       [project_id], one=True)
+    if not project:
+        flash('Project not found!', 'error')
+        return redirect(url_for('projects'))
+
+    # fetch cuts & inventory
+    cuts = query_db('SELECT * FROM cuts WHERE project_id = ?', [project_id])
+    inventory = query_db('SELECT * FROM inventory', [])
+
+    # call optimized algorithm
+    from wood_cut_calc.cutting_algorithms import generate_basic_plan
+
+    # Check if any cuts have joining enabled
+    cuts_with_joining = any(
+        cut['allow_joining'] if 'allow_joining' in cut.keys() else False
+        for cut in cuts
+    )
     
-    try:
-        project = query_db('SELECT * FROM projects WHERE id = ?', [project_id], one=True)
-        logger.debug(f"Project data: {dict(project) if project else None}")
-        
-        cuts = query_db('''
-            SELECT c.*, s.name as species_name, q.name as quality_name
-            FROM cuts c 
-            LEFT JOIN species s ON c.species_id = s.id 
-            LEFT JOIN qualities q ON c.quality_id = q.id
-            WHERE c.project_id = ?
-        ''', [project_id])
-        logger.debug(f"Found {len(cuts) if cuts else 0} cuts for this project")
-        
-        # Check if we have cuts to work with
-        if not cuts:
-            logger.warning(f"No cuts found for project {project_id}")
-            flash('Unable to generate cutting plan: No cuts defined for this project.', 'warning')
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        # Get all available inventory items with species and quality info
-        inventory = query_db('''
-            SELECT i.*, s.name as species_name, q.name as quality_name 
-            FROM inventory i 
-            JOIN species s ON i.species_id = s.id
-            LEFT JOIN qualities q ON i.quality_id = q.id
-        ''')
-        logger.debug(f"Found {len(inventory) if inventory else 0} inventory items")
-        
-        # Check if we have inventory to work with
-        if not inventory:
-            logger.warning("No inventory items found in database")
-            flash('Unable to generate cutting plan: No inventory items available. Please add inventory first.', 'warning')
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        # Log the cuts and inventory for debugging
-        if debug_mode:
-            logger.debug("Cuts data:")
-            for i, cut in enumerate(cuts):
-                logger.debug(f"  Cut {i+1}: {dict(cut)}")
-            
-            logger.debug("Inventory data:")
-            for i, item in enumerate(inventory):
-                logger.debug(f"  Item {i+1}: {dict(item)}")
-        
-        # Process the cuts and generate a plan
-        logger.debug("Calling calculate_cutting_plan function")
-        shopping_list, cutting_plan, unmatched_dimensions = calculate_cutting_plan(cuts, inventory)
-        
-        logger.debug(f"Shopping list has {len(shopping_list) if shopping_list else 0} items")
-        logger.debug(f"Cutting plan has {len(cutting_plan) if cutting_plan else 0} dimensions")
-        
-        # Check if we got any results
-        if not shopping_list and not cutting_plan:
-            logger.warning(f"No cutting plan generated. Unmatched dimensions: {unmatched_dimensions}")
-            
-            if unmatched_dimensions:
-                # Create a more informative error message
-                dimension_list = ", ".join(f"{dim} ({len(details['cuts'])} cuts)" for dim, details in unmatched_dimensions.items())
-                error_msg = f"Could not generate a cutting plan for dimensions: {dimension_list}. "
-                error_msg += "The available inventory items may not be suitable for these cuts."
-                flash(error_msg, 'warning')
-            else:
-                flash('No cutting plan could be generated. This may be because no inventory items match the dimensions needed for your cuts.', 'warning')
-            
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        logger.debug("Successfully generated cutting plan, rendering template")
-        
-        # Create a serializable version of the plan data for potential saving
-        serializable_plan = {
-            'project_id': project_id,
-            'shopping_list': {},
-            'cutting_plan': {},
-            'unmatched_dimensions': {}
-        }
-        
-        # Convert shopping list to serializable format
-        for key, item_data in shopping_list.items():
-            serializable_plan['shopping_list'][key] = {
-                'item': dict(item_data['item']),
-                'quantity': item_data['quantity'],
-                'total_price': item_data['total_price']
-            }
-        
-        # Convert cutting plan to serializable format
-        for dimension, plans in cutting_plan.items():
-            serializable_plan['cutting_plan'][dimension] = []
-            for plan in plans:
-                serializable_cuts = []
-                for cut in plan['cuts']:
-                    serializable_cuts.append(dict(cut))
-                
-                serializable_plan['cutting_plan'][dimension].append({
-                    'item': dict(plan['item']),
-                    'cuts': serializable_cuts,
-                    'waste': plan['waste'],
-                    'waste_percent': plan.get('waste_percent', 0),
-                    'is_cost_efficient': plan.get('is_cost_efficient', False),
-                    'efficiency_note': plan.get('efficiency_note', '')
-                })
-        
-        # Convert unmatched dimensions to serializable format
-        for dim, details in unmatched_dimensions.items():
-            serializable_cuts = []
-            for cut in details['cuts']:
-                serializable_cuts.append(dict(cut))
-            
-            serializable_plan['unmatched_dimensions'][dim] = {
-                'cuts': serializable_cuts,
-                'reason': details['reason']
-            }
-        
-        # Store the serializable plan in the session for saving later
-        serialized_data = json.dumps(serializable_plan)
-        
-        # Pass temp_plan_data to the template for saving functionality
-        return render_template('cutting_plan.html', 
-                            project=project, 
-                            shopping_list=shopping_list, 
-                            cutting_plan=cutting_plan,
-                            unmatched_dimensions=unmatched_dimensions,
-                            temp_plan_data=serialized_data)
-                            
-    except Exception as e:
-        logger.error(f"Error generating cutting plan: {str(e)}", exc_info=True)
-        flash(f"An error occurred when generating the cutting plan: {str(e)}", 'danger')
-        return redirect(url_for('view_project', project_id=project_id))
+    logger.info(f"Generating cutting plan for {len(cuts)} cuts "
+                f"using {len(inventory)} inventory items "
+                f"(joining {'enabled' if cuts_with_joining else 'disabled'})")
+    plan = generate_basic_plan(cuts, inventory,
+                               allow_joining=cuts_with_joining)
+    
+    # The new algorithm returns solutions directly in the expected format
+    solutions = plan.get('solutions', [])
+    
+    # Add some additional metrics if solutions exist
+    if solutions:
+        logger.info(f"Generated {len(solutions)} optimized solutions")
+        for i, solution in enumerate(solutions):
+            strategy = solution.get('efficiency_metrics', {}).get(
+                'strategy', f'Solution {i+1}'
+            )
+            cost = solution.get('total_cost', 0)
+            waste = solution.get('waste_percentage', 0)
+            logger.debug(f"{strategy}: ${cost:.2f}, {waste:.1f}% waste")
+    else:
+        logger.warning("No solutions generated - check inventory")
+        flash('No cutting solutions could be generated. Please check that '
+              'your inventory items can accommodate the required cuts.',
+              'warning')
+
+    return render_template('cutting_plan.html', project=project,
+                           plan=plan, solutions=solutions)
+
 
 # API endpoint to import data from CSV
 @app.route('/api/import_csv', methods=['POST'])
@@ -1038,398 +1141,32 @@ def import_csv():
     
     return jsonify({'success': True, 'supplier_id': supplier_id, 'project_id': project_id})
 
-def calculate_cutting_plan(cuts, inventory):
-    """
-    Calculates the optimal cutting plan based on the required cuts and available inventory.
-    
-    Returns:
-    - shopping_list: List of inventory items to purchase with quantities
-    - cutting_plan: How to cut each purchased item
-    - unmatched_dimensions: Dictionary of dimensions that couldn't be matched with suitable inventory
-    """
-    logger.debug("Starting calculate_cutting_plan")
-    
-    # Group cuts by dimensions (width x depth) and species
-    grouped_cuts = {}
-    for cut in cuts:
-        # Create a composite key including species and quality if available
-        # SQLite Row objects don't support .get() method, use dictionary-like access with a fallback
-        species_id = cut['species_id'] if 'species_id' in cut else None
-        
-        # Check if quality_id exists in the cut data
-        try:
-            quality_id = cut['quality_id'] if 'quality_id' in cut else None
-        except:
-            quality_id = None
-            
-        species_part = f"_{species_id}" if species_id else ""
-        quality_part = f"_{quality_id}" if quality_id else ""
-        key = f"{cut['width']}x{cut['depth']}{species_part}{quality_part}"
-        
-        if key not in grouped_cuts:
-            grouped_cuts[key] = []
-        
-        # Add cut multiple times based on quantity
-        for i in range(cut['quantity']):
-            grouped_cuts[key].append({
-                'label': cut['label'],
-                'length': cut['length'],
-                'width': cut['width'],
-                'depth': cut['depth'],
-                'species_id': species_id,
-                'species_name': cut['species_name'] if 'species_name' in cut else None,
-                'quality_id': quality_id,
-                'quality_name': cut.get('quality_name') if hasattr(cut, 'get') else (cut['quality_name'] if 'quality_name' in cut else None)
-            })
-    
-    logger.debug(f"Grouped cuts by dimensions: {list(grouped_cuts.keys())}")
-    
-    # Match inventory to dimensions
-    matching_inventory = {}
-    for key in grouped_cuts:
-        try:
-            # Parse the key to get dimensions, species and quality
-            key_parts = key.split('_')
-            dimensions = key_parts[0]
-            species_id = int(key_parts[1]) if len(key_parts) > 1 and key_parts[1] else None
-            quality_id = int(key_parts[2]) if len(key_parts) > 2 and key_parts[2] else None
-            
-            width, depth = map(int, dimensions.split('x'))
-            matching_inventory[key] = []
-            
-            logger.debug(f"Looking for inventory matching width={width}, depth={depth}, species_id={species_id}")
-            
-            for item in inventory:
-                # Match by dimensions (allow for rotation if width/depth are swapped)
-                dimensions_match = (item['width'] == width and item['height'] == depth) or \
-                                  (item['width'] == depth and item['height'] == width)
-                
-                # Match by species if a species was specified for the cut
-                species_match = True
-                if species_id is not None:
-                    species_match = item['species_id'] == species_id
-                
-                # Match by quality if a quality was specified for the cut
-                quality_match = True
-                if quality_id is not None:
-                    # Check if item has quality_id field (for backward compatibility)
-                    item_quality_id = item.get('quality_id') if hasattr(item, 'get') else (item['quality_id'] if 'quality_id' in item else None)
-                    quality_match = item_quality_id == quality_id
-                
-                if dimensions_match and species_match and quality_match:
-                    matching_inventory[key].append(item)
-                    # Get product name safely
-                    product_name = None
-                    if 'product_name' in item:
-                        product_name = item['product_name']
-                    elif 'task' in item:
-                        product_name = item['task']
-                    else:
-                        product_name = f"Item #{item['id']}"
-                    
-                    logger.debug(f"  Match found: Item ID {item['id']} - {product_name} ({item['length']}x{item['width']}x{item['height']})")
-            
-            if not matching_inventory[key]:
-                warning_msg = f"No matching inventory found for dimension {dimensions}"
-                
-                if species_id:
-                    species_name = next((cut['species_name'] for cut in grouped_cuts[key] if cut.get('species_name')), "Unknown")
-                    warning_msg += f" with species {species_name}"
-                
-                if quality_id:
-                    quality_name = next((cut['quality_name'] for cut in grouped_cuts[key] if cut.get('quality_name')), "Unknown")
-                    warning_msg += f" and quality {quality_name}"
-                
-                logger.warning(warning_msg)
-        except Exception as e:
-            logger.error(f"Error processing dimension key {key}: {str(e)}", exc_info=True)
-    
-    # Generate cutting plan using a cost-optimized algorithm
-    shopping_list = {}
-    cutting_plan = {}
-    
-    for dimension, cuts_list in grouped_cuts.items():
-        logger.debug(f"Processing dimension {dimension} with {len(cuts_list)} cuts")
-        
-        # Sort cuts by length (descending)
-        cuts_list.sort(key=lambda x: x['length'], reverse=True)
-        
-        # Get available inventory for this dimension
-        available_items = matching_inventory[dimension]
-        if not available_items:
-            logger.warning(f"Skipping dimension {dimension}: No matching inventory available")
-            continue
-        
-        # Try all inventory options and keep the most cost-effective solution
-        best_solution = None
-        best_total_cost = float('inf')
-        best_item_count = 0
-        best_cutting_plan = []
-        
-        for item_option in available_items:
-            # Get product name safely
-            product_name = None
-            if 'product_name' in item_option:
-                product_name = item_option['product_name']
-            elif 'task' in item_option:
-                product_name = item_option['task']
-            else:
-                product_name = f"Item #{item_option['id']}"
-                
-            logger.debug(f"Trying item {item_option['id']} - {product_name} ({item_option['length']}x{item_option['width']}x{item_option['height']})")
-            
-            # Check if any cuts are larger than the inventory item length
-            too_large_cuts = [cut for cut in cuts_list if cut['length'] > item_option['length']]
-            if too_large_cuts:
-                logger.warning(f"Found {len(too_large_cuts)} cuts that are too large for inventory item length {item_option['length']}mm")
-                # Skip this inventory item if there are cuts that will never fit
-                continue
-            
-            # Try to fit cuts on this item type
-            remaining_cuts = cuts_list.copy()
-            item_count = 0
-            current_cutting_plan = []
-            max_iterations = 1000  # Safety limit to prevent infinite loops
-            iterations = 0
-            total_waste = 0
-            
-            # Track if we're making progress with this inventory option
-            has_progress = True
-            
-            while remaining_cuts and has_progress and iterations < max_iterations:
-                iterations += 1
-                item_count += 1
-                current_length = item_option['length']
-                cuts_on_this_item = []
-                
-                i = 0
-                while i < len(remaining_cuts):
-                    cut = remaining_cuts[i]
-                    # Check if this cut fits on the current item
-                    if cut['length'] <= current_length:
-                        cuts_on_this_item.append(cut)
-                        current_length -= cut['length']
-                        remaining_cuts.pop(i)
-                    else:
-                        i += 1
-                
-                # Check if we made any progress (used any cuts)
-                if len(cuts_on_this_item) == 0:
-                    logger.warning(f"No cuts could be placed on item {item_count} (length: {item_option['length']}mm)")
-                    has_progress = False
-                    item_count -= 1  # Rollback the increment as we're not using this item
-                    break
-                
-                # Calculate waste for this item
-                waste = current_length
-                total_waste += waste
-                
-                # Record the cutting plan for this item
-                current_cutting_plan.append({
-                    'item': item_option,
-                    'cuts': cuts_on_this_item,
-                    'waste': waste,
-                    'waste_percent': (waste / item_option['length']) * 100
-                })
-                
-                logger.debug(f"Item {item_count}: Used {len(cuts_on_this_item)} cuts with {waste}mm waste")
-            
-            # Calculate total cost for this solution
-            total_cost = item_count * item_option['price']
-            
-            # Only consider complete solutions (all cuts used)
-            if item_count > 0 and not remaining_cuts:
-                # Get product name safely
-                product_name = None
-                if 'product_name' in item_option:
-                    product_name = item_option['product_name']
-                elif 'task' in item_option:
-                    product_name = item_option['task']
-                else:
-                    product_name = f"Item #{item_option['id']}"
-                
-                logger.debug(f"Complete solution found using {product_name} ({item_option['length']}mm): "
-                           f"{item_count} items, total cost ${total_cost:.2f}, total waste {total_waste}mm")
-                
-                # Check if this is the cheapest solution so far
-                if total_cost < best_total_cost:
-                    best_solution = item_option
-                    best_total_cost = total_cost
-                    best_item_count = item_count
-                    best_cutting_plan = current_cutting_plan
-                    
-                    # Add cost efficiency info to each cutting plan item
-                    avg_waste_percent = total_waste / (item_count * item_option['length']) * 100
-                    for plan in best_cutting_plan:
-                        # Only mark as cost-efficient if it has significant waste (over 20%)
-                        if plan['waste_percent'] > 20:
-                            plan['is_cost_efficient'] = True
-                            shorter_options = [i for i in available_items if i['length'] < item_option['length']]
-                            if shorter_options:
-                                shortest = min(shorter_options, key=lambda x: x['length'])
-                                plan['efficiency_note'] = f"Using {item_option['length']}mm instead of {shortest['length']}mm is more cost-effective overall"
-                            else:
-                                plan['efficiency_note'] = f"This longer board is more cost-effective than using multiple shorter pieces"
-                        else:
-                            plan['is_cost_efficient'] = False
-                        plan['avg_waste_percent'] = avg_waste_percent
-            else:
-                if remaining_cuts:
-                    # Get product name safely
-                    product_name = None
-                    if 'product_name' in item_option:
-                        product_name = item_option['product_name']
-                    elif 'task' in item_option:
-                        product_name = item_option['task']
-                    else:
-                        product_name = f"Item #{item_option['id']}"
-                    
-                    logger.warning(f"Incomplete solution with {product_name} - {len(remaining_cuts)} cuts couldn't be placed")
-                else:
-                    logger.warning(f"No viable cutting solution found with item {item_option['id']}")
-        
-        # Add best solution to shopping list and cutting plan
-        if best_solution:
-            item_key = f"{best_solution['id']}"
-            if item_key in shopping_list:
-                shopping_list[item_key]['quantity'] += best_item_count
-                shopping_list[item_key]['total_price'] = shopping_list[item_key]['quantity'] * best_solution['price']
-            else:
-                shopping_list[item_key] = {
-                    'item': best_solution,
-                    'quantity': best_item_count,
-                    'total_price': best_item_count * best_solution['price']
-                }
-            
-            # Save cutting plan
-            cutting_plan[dimension] = best_cutting_plan
-            
-            # Get product name safely
-            product_name = None
-            if 'product_name' in best_solution:
-                product_name = best_solution['product_name']
-            elif 'task' in best_solution:
-                product_name = best_solution['task']
-            else:
-                product_name = f"Item #{best_solution['id']}"
-                
-            logger.debug(f"Best solution for dimension {dimension}: {best_item_count} items of {product_name}, "
-                       f"total cost: ${best_total_cost:.2f}")
-        else:
-            logger.warning(f"No valid solution found for dimension {dimension}")
-    
-    # Find dimensions that couldn't be matched or had incomplete solutions
-    unmatched_dimensions = {}
-    for dimension, cuts_list in grouped_cuts.items():
-        if dimension not in cutting_plan:
-            # Extract dimension details for more user-friendly error message
-            key_parts = dimension.split('_')
-            dimensions = key_parts[0]
-            species_id = int(key_parts[1]) if len(key_parts) > 1 and key_parts[1] else None
-            quality_id = int(key_parts[2]) if len(key_parts) > 2 and key_parts[2] else None
-            
-            # Get readable names
-            species_name = cuts_list[0].get('species_name') if species_id and cuts_list else None
-            quality_name = cuts_list[0].get('quality_name') if quality_id and cuts_list else None
-            
-            # Build detailed reason
-            reason = 'No matching inventory items found'
-            if species_name:
-                reason += f" with species '{species_name}'"
-            if quality_name:
-                reason += f" and quality '{quality_name}'"
-                
-            unmatched_dimensions[dimension] = {
-                'cuts': cuts_list,
-                'reason': reason,
-                'dimensions': dimensions,
-                'species_name': species_name,
-                'quality_name': quality_name
-            }
-            logger.warning(f"Dimension {dimension} couldn't be matched to any inventory items")
-    
-    logger.debug(f"Calculation complete. Shopping list: {len(shopping_list)} items, Cutting plan: {len(cutting_plan)} dimension groups")
-    logger.debug(f"Unmatched dimensions: {len(unmatched_dimensions)}")
-    
-    return shopping_list, cutting_plan, unmatched_dimensions
-
 # Save cutting plan
 @app.route('/project/<int:project_id>/plan/save', methods=['POST'])
 def save_cutting_plan(project_id):
-    try:
-        plan_name = request.form.get('plan_name', f"Cutting Plan {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        plan_data = request.form.get('plan_data')
-        
-        if not plan_data:
-            flash('Error: No plan data provided', 'danger')
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        # Save the plan to the database
-        modify_db('INSERT INTO saved_plans (project_id, name, plan_data) VALUES (?, ?, ?)',
-                [project_id, plan_name, plan_data])
-        
-        flash(f'Cutting plan "{plan_name}" saved successfully!', 'success')
-        return redirect(url_for('view_project', project_id=project_id))
-        
-    except Exception as e:
-        logger.error(f"Error saving cutting plan: {str(e)}", exc_info=True)
-        flash(f"An error occurred when saving the cutting plan: {str(e)}", 'danger')
-        return redirect(url_for('view_project', project_id=project_id))
+    # Import our route handler
+    from wood_cut_calc.routes import save_cutting_plan as save_cutting_plan_handler
+
+    # Call the handler with our database function
+    return save_cutting_plan_handler(project_id, modify_db)
 
 # View saved cutting plan
 @app.route('/project/<int:project_id>/plan/<int:plan_id>')
 def view_saved_plan(project_id, plan_id):
-    try:
-        project = query_db('SELECT * FROM projects WHERE id = ?', [project_id], one=True)
-        saved_plan = query_db('SELECT * FROM saved_plans WHERE id = ? AND project_id = ?', 
-                           [plan_id, project_id], one=True)
-        
-        if not saved_plan:
-            flash('Saved plan not found', 'danger')
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        # Parse the saved plan data
-        plan_data = json.loads(saved_plan['plan_data'])
-        
-        # Reconstruct the plan components
-        shopping_list = plan_data['shopping_list']
-        cutting_plan = plan_data['cutting_plan']
-        unmatched_dimensions = plan_data['unmatched_dimensions']
-        
-        return render_template('cutting_plan.html',
-                            project=project,
-                            shopping_list=shopping_list,
-                            cutting_plan=cutting_plan,
-                            unmatched_dimensions=unmatched_dimensions,
-                            saved_plan=saved_plan)
-                            
-    except Exception as e:
-        logger.error(f"Error viewing saved plan: {str(e)}", exc_info=True)
-        flash(f"An error occurred when viewing the saved plan: {str(e)}", 'danger')
-        return redirect(url_for('view_project', project_id=project_id))
+    # Import our route handler
+    from wood_cut_calc.routes import view_saved_plan as view_saved_plan_handler
+
+    # Call the handler with our database function
+    return view_saved_plan_handler(project_id, plan_id, query_db)
 
 # Delete saved cutting plan
 @app.route('/project/<int:project_id>/plan/<int:plan_id>/delete', methods=['POST'])
 def delete_saved_plan(project_id, plan_id):
-    try:
-        # Check if plan exists
-        saved_plan = query_db('SELECT * FROM saved_plans WHERE id = ? AND project_id = ?', 
-                           [plan_id, project_id], one=True)
-        
-        if not saved_plan:
-            flash('Saved plan not found', 'danger')
-            return redirect(url_for('view_project', project_id=project_id))
-        
-        # Delete the plan
-        modify_db('DELETE FROM saved_plans WHERE id = ?', [plan_id])
-        
-        flash('Saved plan deleted successfully!', 'success')
-        return redirect(url_for('view_project', project_id=project_id))
-        
-    except Exception as e:
-        logger.error(f"Error deleting saved plan: {str(e)}", exc_info=True)
-        flash(f"An error occurred when deleting the saved plan: {str(e)}", 'danger')
-        return redirect(url_for('view_project', project_id=project_id))
+    # Import our route handler
+    from wood_cut_calc.routes import delete_saved_plan as delete_saved_plan_handler
+
+    # Call the handler with our database functions
+    return delete_saved_plan_handler(project_id, plan_id, query_db, modify_db)
 
 # PDF feature has been removed as requested
 
