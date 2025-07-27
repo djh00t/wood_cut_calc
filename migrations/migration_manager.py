@@ -4,11 +4,11 @@
 Migration Manager - Runs all migrations in the correct order
 """
 
-import os
-import sys
 import importlib
 import logging
+import os
 import sqlite3
+import sys
 from datetime import datetime
 
 # Configure logging
@@ -27,7 +27,10 @@ MIGRATIONS = [
     'migrate_rename_task_to_product_name',
     'migrate_add_quality',
     'migrate_quality_to_relation',
-    'migrate_add_quality_to_cuts'
+    'migrate_add_quality_to_cuts',
+    'migrate_add_timber_joining',
+    'migrate_add_shipping_cost',
+    'migrate_add_per_cut_joining'
 ]
 
 def ensure_migration_tracking():
