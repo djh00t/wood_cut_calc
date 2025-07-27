@@ -160,8 +160,20 @@
                         <tr>
                             <td>{{ cut.label }}</td>
                             <td>{{ cut.length }}</td>
-                            <td>{{ cut.width }}</td>
-                            <td>{{ cut.depth }}</td>
+                            <td>
+                                {% if cut.width == 0 %}
+                                    <span class="badge bg-warning" title="Flexible dimension - will match any width">Any</span>
+                                {% else %}
+                                    {{ cut.width }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cut.depth == 0 %}
+                                    <span class="badge bg-warning" title="Flexible dimension - will match any thickness">Any</span>
+                                {% else %}
+                                    {{ cut.depth }}
+                                {% endif %}
+                            </td>
                             <td>{{ cut.quantity }}</td>
                             <td>{{ cut.length * cut.quantity }}</td>
                             <td>
