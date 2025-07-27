@@ -76,14 +76,34 @@
                     <label for="width" class="form-label">Width (mm)</label>
                     <input type="number" class="form-control" id="width" name="width" 
                            value="{{ cut.width if edit_mode else '' }}"
-                           required min="1">
+                           required min="0">
+                    <div class="form-text">
+                        Set to 0 for flexible width matching.
+                    </div>
                 </div>
                 
                 <div class="col-md-4 mb-3">
                     <label for="depth" class="form-label">Thickness (mm)</label>
                     <input type="number" class="form-control" id="depth" name="depth" 
                            value="{{ cut.depth if edit_mode else '' }}"
-                           required min="1">
+                           required min="0">
+                    <div class="form-text">
+                        Set to 0 for flexible thickness matching.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="allow_joining" name="allow_joining" value="1"
+                           {% if edit_mode and cut.allow_joining %}checked{% endif %}>
+                    <label class="form-check-label" for="allow_joining">
+                        Allow timber joining for this cut
+                    </label>
+                    <div class="form-text">
+                        When enabled, the system can join smaller pieces together to meet this cut's requirements.
+                        For example, two 90x45mm pieces can be joined to create a 90x90mm dimension.
+                    </div>
                 </div>
             </div>
             
@@ -92,6 +112,17 @@
                 <input type="number" class="form-control" id="quantity" name="quantity" 
                        value="{{ cut.quantity if edit_mode else '1' }}"
                        required min="1">
+            </div>
+            
+            <div class="alert alert-info" role="alert">
+                <strong>Multiple Match Feature:</strong> Set Width or Thickness to 0 for flexible matching. This allows the system to find timber pieces where only some dimensions are critical.
+                <ul>
+                    <li><strong>Length must be exact</strong> (required dimension for all cuts)</li>
+                    <li><strong>Width = 0:</strong> Any width will match (only Length and Thickness matter)</li>
+                    <li><strong>Thickness = 0:</strong> Any thickness will match (only Length and Width matter)</li>
+                    <li><strong>Both Width and Thickness = 0:</strong> Only Length matters, any cross-section will match</li>
+                </ul>
+                <p class="mb-0"><em>This is especially useful when you need specific lengths but can work with various timber profiles.</em></p>
             </div>
             
             <button type="submit" class="btn btn-primary">
