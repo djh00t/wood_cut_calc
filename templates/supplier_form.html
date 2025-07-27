@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Wood Project Planner - Add Supplier{% endblock %}
+{% block title %}Wood Project Planner - {% if edit_mode %}Edit{% else %}Add{% endif %} Supplier{% endblock %}
 
 {% block content %}
 <div class="mb-4">
-    <h2>Add Supplier</h2>
+    <h2>{% if edit_mode %}Edit{% else %}Add{% endif %} Supplier</h2>
 </div>
 
 <div class="row">
@@ -12,10 +12,24 @@
         <form method="post">
             <div class="mb-3">
                 <label for="name" class="form-label">Supplier Name</label>
-                <input type="text" class="form-control" id="name" name="name" required>
+                <input type="text" class="form-control" id="name" name="name" 
+                       value="{{ supplier.name if edit_mode else '' }}" required>
             </div>
             
-            <button type="submit" class="btn btn-primary">Add Supplier</button>
+            <div class="mb-3">
+                <label for="shipping_cost" class="form-label">Shipping Cost per Delivery</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" min="0" class="form-control" 
+                           id="shipping_cost" name="shipping_cost" 
+                           value="{{ supplier.shipping_cost if edit_mode else '0.00' }}" required>
+                </div>
+                <div class="form-text">Fixed shipping cost per delivery from this supplier</div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}Update{% else %}Add{% endif %} Supplier
+            </button>
             <a href="{{ url_for('suppliers') }}" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
