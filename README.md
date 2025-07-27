@@ -1,150 +1,90 @@
 # Wood Cutting Calculator
 
-An application that helps woodworkers optimize cutting plans by solving the bin packing problem. This tool allows you to manage timber suppliers, inventory, projects, and calculate the most efficient cutting plan for your woodworking projects.
+A web application for optimizing cutting plans for woodworking projects.
 
-## Features
+## Overview
 
-- **Supplier Management**: Add and track timber suppliers
-- **Inventory Management**: Record available timber products with dimensions and prices
-- **Project Management**: Create woodworking projects with custom cut lists
-- **Cutting Optimization**: Calculate optimal cutting plans to minimize waste
-- **Visual Cutting Diagrams**: Visual representation of how to cut each piece of timber
-- **Shopping List Generation**: Generate shopping lists with total costs
-- **CSV Import**: Import project data via CSV file
+The Wood Cutting Calculator helps woodworkers minimize waste and cost by efficiently allocating required parts to available inventory items. It supports wildcard dimensions (0 thickness) and generates optimized cutting plans with visual diagrams.
 
-## Installation
+## Key Features
 
-### Prerequisites
-- Python 3.8+
-- Poetry (Python package manager)
-- Docker (optional, for containerized deployment)
+- Inventory management (suppliers, timber species, quality grades)
+- Project and cuts management
+- Multiple optimized cutting solutions
+- Support for wildcard dimensions (flexible width or thickness)
+- SVG-based cutting diagrams
+- Proper part numbering (e.g., "1.01")
+- Waste calculation and visualization
+- Cost optimization
 
-### Setup with Poetry
+## Project Structure
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/wood_cut_calc.git
-   cd wood_cut_calc
-   ```
-
-2. Install Poetry if you don't have it:
-   ```
-   curl -sSL https://install.python-poetry.org | python3 -
-   ```
-
-3. Install dependencies and set up the project:
-   ```
-   # Using the setup script
-   python setup.py
-   
-   # Or using the Makefile
-   make setup
-   ```
-
-4. Run the application:
-   ```
-   # Using poetry directly
-   poetry run flask run
-   
-   # Or using the Makefile
-   make run
-   ```
-
-5. Open your browser and navigate to `http://127.0.0.1:5000/`
-
-### Setup with Docker
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/wood_cut_calc.git
-   cd wood_cut_calc
-   ```
-
-2. Build and run the Docker container:
-   ```
-   # Using docker-compose directly
-   docker-compose up -d
-   
-   # Or using the Makefile
-   make docker-build
-   make docker-run
-   ```
-
-3. Open your browser and navigate to `http://127.0.0.1:5000/`
-
-## Usage Guide
-
-### Setting Up Suppliers and Inventory
-
-1. **Add Suppliers**: Navigate to the Suppliers page and click "Add Supplier" to create a new timber supplier.
-
-2. **Add Inventory Items**: From a supplier's page, click "Add Inventory Item" to add timber products. Enter:
-   - Task/Description (e.g., "Pine Beam", "Oak Board")
-   - Dimensions (Length, Height, Width in mm)
-   - Price
-   - Optional link to the product
-
-### Creating Projects and Cuts
-
-1. **Create Project**: Go to the Projects page and click "Add Project" to create a new woodworking project.
-
-2. **Add Cuts**: From a project page, click "Add Cut" to add required timber pieces. Enter:
-   - Label (e.g., "Table Leg", "Shelf")
-   - Dimensions (Length, Width, Depth in mm)
-   - Quantity needed
-
-### Generating Cutting Plans
-
-1. From your project page, click the "Generate Cutting Plan" button.
-
-2. The system will calculate the optimal way to cut your required pieces from standard timber sizes.
-
-3. Review the generated:
-   - Shopping list with materials to purchase and total cost
-   - Cutting diagrams showing how to cut each piece of timber
-
-### Importing from CSV
-
-You can import data using a CSV file with the following format:
+The project has been restructured into a modular package:
 
 ```
-Inventory
-Item,Length,Height,Width,Price,Link
-Pine Plank,2400,25,100,$12.50,https://supplier.com/item1
-Oak Board,1800,20,150,$18.75,https://supplier.com/item2
-,,,,, 
+wood_cut_calc/
+├── __init__.py           # Package initialization
+├── __main__.py           # Application entry point
+├── cutting_algorithms.py # Cutting plan optimization algorithms  
+├── svg_generator.py      # SVG diagram generation
+└── routes.py             # Flask route handlers
 
-Cuts
-Label,Length,Width,Depth,Quantity
-Table Leg,400,50,50,4
-Shelf,1200,200,20,3
+templates/                # Jinja2 templates
+static/                   # Static assets
+```
+
+## Running the Application
+
+### Method 1: Original Method (app.py)
+
+```bash
+python app.py
+```
+
+### Method 2: Using the Package (Recommended)
+
+```bash
+python -m wood_cut_calc
 ```
 
 ## Development
 
-This application is built with:
-- Flask (Python web framework)
-- SQLite (Database)
-- Bootstrap 5 (Frontend)
-- JavaScript (Client-side interactions)
+This project uses Poetry for dependency management and packaging:
 
-### Available Make Commands
+```bash
+# Install dependencies
+poetry install
 
-The project includes a Makefile with useful commands:
-
-```
-make setup         # Set up the project (install dependencies, initialize database)
-make run           # Run the Flask application
-make initdb        # Initialize or reset the database
-make clean         # Remove database and cache files
-make docker-build  # Build the Docker container
-make docker-run    # Run the application in Docker
-make docker-stop   # Stop the Docker container
-make lint          # Run code linter
-make format        # Format code using Black and isort
-make help          # Show available commands
+# Run the application
+poetry run python -m wood_cut_calc
 ```
 
-## License
+## Implementation Details
 
-MIT License
+### Cutting Plan Algorithm
+
+The cutting plan algorithm follows a phased approach:
+
+1. **Strict Matching Phase**:
+   - Processes cuts with non-zero dimensions using strict matching
+   - Groups cuts by dimensions, species, and quality
+   - Matches with appropriate inventory items
+   - Optimizes assignments to minimize waste
+
+2. **Wildcard Matching Phase**:
+   - Generates different possible assignments for wildcard dimensions
+   - Creates up to 5 distinct solutions with different assignments
+   - Combines with strict cut plans
+
+### SVG Diagram Generation
+
+The application now generates SVG-based cutting diagrams that:
+
+- Scale properly regardless of dimensions
+- Show cuts and waste in different colors
+- Include labels with part numbers, dimensions, and rotation indicators
+- Support downloading and printing
+
+## Licensing
+
+See LICENSE file for details.
