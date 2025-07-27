@@ -21,6 +21,20 @@
                 <textarea class="form-control" id="description" name="description" rows="3">{{ project.description if edit_mode else '' }}</textarea>
             </div>
             
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="allow_timber_joining" name="allow_timber_joining" 
+                           {% if edit_mode and project.allow_timber_joining %}checked{% endif %}>
+                    <label class="form-check-label" for="allow_timber_joining">
+                        Allow Timber Joining
+                    </label>
+                    <div class="form-text">
+                        When enabled, allows combining smaller pieces to meet larger requirements 
+                        (e.g., 2 × 90×45mm pieces to make 90×90mm).
+                    </div>
+                </div>
+            </div>
+            
             <button type="submit" class="btn btn-primary">
                 {% if edit_mode %}Update{% else %}Add{% endif %} Project
             </button>
