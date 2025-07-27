@@ -797,12 +797,64 @@ def generate_basic_plan(
         else:
             logger.info("Strategy 5 (Short Timber) failed to generate solution")
     
-    # Limit to 5 solutions maximum
-    solutions = solutions[:5]
+    # Strategy 6: Premium Quality Timber Only
+    premium_inventory = [item for item in compatible_inventory 
+                        if item.get('quality', '').lower() == 'premium']
+    if premium_inventory:
+        solution6 = _generate_minimum_cost_solution(
+            expanded_cuts, premium_inventory
+        )
+        if solution6 and not _is_duplicate_solution(solution6, solutions):
+            solution6['efficiency_metrics']['strategy'] = 'Premium Quality'
+            logger.info("Strategy 6 (Premium Quality) generated unique solution "
+                        "with cost $%.2f", solution6['total_cost'])
+            solutions.append(solution6)
+        elif solution6:
+            logger.info("Strategy 6 (Premium Quality) generated duplicate solution")
+        else:
+            logger.info("Strategy 6 (Premium Quality) failed to generate solution")
     
-    # Sort solutions by cost efficiency (most efficient first)
+    # Strategy 7: Tasmanian Oak (if available)
+    oak_inventory = [item for item in compatible_inventory 
+                    if 'Oak' in item.get('product_name', '') or
+                       'Tasmanian' in item.get('product_name', '')]
+    if oak_inventory:
+        solution7 = _generate_minimum_cost_solution(
+            expanded_cuts, oak_inventory
+        )
+        if solution7 and not _is_duplicate_solution(solution7, solutions):
+            solution7['efficiency_metrics']['strategy'] = 'Tasmanian Oak'
+            logger.info("Strategy 7 (Tasmanian Oak) generated unique solution "
+                        "with cost $%.2f", solution7['total_cost'])
+            solutions.append(solution7)
+        elif solution7:
+            logger.info("Strategy 7 (Tasmanian Oak) generated duplicate solution")
+        else:
+            logger.info("Strategy 7 (Tasmanian Oak) failed to generate solution")
+    
+    # Strategy 8: Single Supplier Optimization (Bunnings)
+    bunnings_inventory = [item for item in compatible_inventory 
+                         if item.get('supplier_id') == 1]  # Assuming Bunnings is ID 1
+    if bunnings_inventory:
+        solution8 = _generate_minimum_cost_solution(
+            expanded_cuts, bunnings_inventory
+        )
+        if solution8 and not _is_duplicate_solution(solution8, solutions):
+            solution8['efficiency_metrics']['strategy'] = 'Bunnings Only'
+            logger.info("Strategy 8 (Bunnings Only) generated unique solution "
+                        "with cost $%.2f", solution8['total_cost'])
+            solutions.append(solution8)
+        elif solution8:
+            logger.info("Strategy 8 (Bunnings Only) generated duplicate solution")
+        else:
+            logger.info("Strategy 8 (Bunnings Only) failed to generate solution")
+    
+    # Limit to 8 solutions maximum to show more variety
+    solutions = solutions[:8]
+    
+    # Sort solutions by total cost (cheapest first, most expensive last)
     if solutions:
-        solutions.sort(key=_calculate_solution_efficiency, reverse=True)
+        solutions.sort(key=lambda s: s.get('total_cost', float('inf')))
     
     # If no solutions generated, fall back to basic plan
     if not solutions:
@@ -810,8 +862,8 @@ def generate_basic_plan(
                        "falling back to basic plan")
         return _generate_fallback_solution(cuts, inventory)
     
-    logger.info(f"Generated {len(solutions)} optimized solutions "
-                f"(sorted by cost efficiency)")
+    logger.info("Generated %d optimized solutions "
+                "(sorted by cost - cheapest first)", len(solutions))
     return {"solutions": solutions}
 
 
